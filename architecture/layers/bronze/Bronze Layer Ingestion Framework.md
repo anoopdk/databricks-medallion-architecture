@@ -1,4 +1,4 @@
-md_content = """# Databricks Bronze Layer Ingestion Framework – Design and Implementation
+# Databricks Bronze Layer Ingestion Framework – Design and Implementation
 **Author:** Anoop Kulkarni  
 **Role:** Senior Data Engineer  
 **Platform:** Databricks | Delta Lake | PySpark | Auto Loader  
