@@ -1,7 +1,5 @@
 # Silver Layer — Metadata-driven Validation & Audit
 
-**Author:** Assistant
-**Audience:** Data Engineers, Platform Engineers
 **Purpose:** Provide full documentation and production-ready code for a metadata-driven Silver-layer pipeline on Databricks (Delta Lake / PySpark / DLT) that:
 
 - Reads schema and DQ rules from `workspace.control.table_schema_definition` (column-level control table)
