@@ -2,7 +2,7 @@
 
 **Purpose:** Provide full documentation and production-ready code for a metadata-driven Silver-layer pipeline on Databricks (Delta Lake / PySpark / DLT) that:
 
-- Reads schema and DQ rules from `workspace.control.table_schema_definition` (column-level control table)
+- Reads schema and DQ rules from `workspace.control.table_schema_registry` (column-level control table)
 - Applies type casting, nullability checks, DQ expectations, and primary-key uniqueness checks
 - Routes invalid rows to quarantine with violation flags
 - Writes validated data to `silver.<entity>`
@@ -29,7 +29,7 @@
 ---
 
 ## 1. Executive summary
-This document describes a robust, metadata-driven Silver-layer pipeline that enforces schema and data quality using a column-level control table: `workspace.control.table_schema_definition`.
+This document describes a robust, metadata-driven Silver-layer pipeline that enforces schema and data quality using a column-level control table: `workspace.control.table_schema_registry`.
 
 Key features:
 - Centralized column-level metadata (type, nullable, expectation, PK flag)
@@ -41,10 +41,10 @@ Key features:
 
 ## 2. Control tables (DDL)
 
-### control.table_schema_definition (your provided structure)
+### control.table_schema_registry (your provided structure)
 
 ```sql
-CREATE TABLE IF NOT EXISTS workspace.control.table_schema_definition (
+CREATE TABLE IF NOT EXISTS workspace.control.table_schema_registry (
   source_id BIGINT,
   entity_name STRING,
   column_name STRING,
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS silver.rule_violation_log (
 
 ## 4. High-level architecture
 
-1. **Control plane**: `workspace.control.table_schema_definition` stores column-level definitions and DQ rules.
+1. **Control plane**: `workspace.control.table_schema_registry` stores column-level definitions and DQ rules.
 2. **Bronze**: Auto Loader lands raw files into `bronze.<entity>_raw` (schema inferred).
 3. **Silver processor** (PySpark job or DLT): reads metadata, casts, evaluates rules, writes `silver.<entity>` and `silver.<entity>_quarantine`. Writes logs to `silver.pipeline_audit_log` and `silver.rule_violation_log`.
 4. **Monitoring**: Alerting on high invalid rate, repeated violations, or pipeline failures.
@@ -202,7 +202,7 @@ from pyspark.sql import functions as F
 def get_entity_metadata(entity_name: str):
     # Read active column-level metadata for entity
     mdf = (
-        spark.table("workspace.control.table_schema_definition")
+        spark.table("workspace.control.table_schema_registry")
         .filter((F.col("entity_name") == entity_name) & (F.col("is_active") == True))
         .orderBy(F.col("is_primark_key").desc(), F.col("column_name"))
     )
@@ -408,7 +408,7 @@ def silver_orders():
     bronze = dlt.read("bronze_orders_raw")
 
     # Read metadata for this entity
-    meta_df = spark.table("workspace.control.table_schema_definition").filter("entity_name = 'orders' AND is_active = true")
+    meta_df = spark.table("workspace.control.table_schema_registry").filter("entity_name = 'orders' AND is_active = true")
     meta = meta_df.collect()
 
     # Apply casts
@@ -510,13 +510,13 @@ def test_casting_basic(spark):
 
 ### Insert sample metadata rows
 ```sql
-INSERT INTO workspace.control.table_schema_definition VALUES
+INSERT INTO workspace.control.table_schema_registry VALUES
 (101, 'orders', 'order_id', 'string', 'length(order_id) > 0', false, true, 'Order identifier', true, 1, current_user(), current_timestamp());
 
-INSERT INTO workspace.control.table_schema_definition VALUES
+INSERT INTO workspace.control.table_schema_registry VALUES
 (101, 'orders', 'order_date', 'date', 'order_date <= current_date()', true, false, 'Order date', true, 1, current_user(), current_timestamp());
 
-INSERT INTO workspace.control.table_schema_definition VALUES
+INSERT INTO workspace.control.table_schema_registry VALUES
 (101, 'orders', 'amount', 'decimal(10,2)', 'amount > 0', false, false, 'Order amount', true, 1, current_user(), current_timestamp());
 ```
 
